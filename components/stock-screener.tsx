@@ -7,12 +7,14 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
-import { MOCK_STOCKS } from "@/lib/mock-data"
 import { StockTable } from "@/components/stock-table"
-import { Search, SlidersHorizontal } from "lucide-react"
+import { Search, SlidersHorizontal, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useLiveMarketData } from "@/hooks/use-live-market-data"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export function StockScreener() {
+  const { stocks, loading, lastUpdate, refresh } = useLiveMarketData(10000)
   const [searchQuery, setSearchQuery] = useState("")
   const [exchange, setExchange] = useState<string>("all")
   const [sector, setSector] = useState<string>("all")
@@ -21,27 +23,24 @@ export function StockScreener() {
   const [showFilters, setShowFilters] = useState(true)
 
   const sectors = useMemo(() => {
-    const uniqueSectors = [...new Set(MOCK_STOCKS.map((s) => s.sector))]
+    const uniqueSectors = [...new Set(stocks.map((s) => s.sector))]
     return uniqueSectors.sort()
-  }, [])
+  }, [stocks])
 
   const filteredStocks = useMemo(() => {
-    return MOCK_STOCKS.filter((stock) => {
+    return stocks.filter((stock) => {
       const matchesSearch =
         stock.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
         stock.name.toLowerCase().includes(searchQuery.toLowerCase())
 
       const matchesExchange = exchange === "all" || stock.exchange === exchange
-
       const matchesSector = sector === "all" || stock.sector === sector
-
       const matchesPrice = stock.price >= minPrice[0]
-
       const matchesRFactor = !stock.rFactor || stock.rFactor >= minRFactor[0]
 
       return matchesSearch && matchesExchange && matchesSector && matchesPrice && matchesRFactor
     })
-  }, [searchQuery, exchange, sector, minPrice, minRFactor])
+  }, [stocks, searchQuery, exchange, sector, minPrice, minRFactor])
 
   const activeFiltersCount = useMemo(() => {
     let count = 0
@@ -60,8 +59,25 @@ export function StockScreener() {
     setMinRFactor([0])
   }
 
+  if (loading && stocks.length === 0) {
+    return <Skeleton className="h-[600px]" />
+  }
+
   return (
     <div className="space-y-4">
+      {/* Live Data Indicator */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="text-sm text-muted-foreground">
+            {lastUpdate ? `Updated ${lastUpdate.toLocaleTimeString()}` : "Live Market Data"}
+          </span>
+        </div>
+        <Button variant="ghost" size="sm" onClick={refresh}>
+          <RefreshCw className="size-4" />
+        </Button>
+      </div>
+
       {/* Search and Filter Toggle */}
       <Card>
         <CardContent className="pt-6">
@@ -162,7 +178,7 @@ export function StockScreener() {
           <div className="flex items-center justify-between">
             <CardTitle>Results</CardTitle>
             <span className="text-sm text-muted-foreground">
-              Showing {filteredStocks.length} of {MOCK_STOCKS.length} stocks
+              Showing {filteredStocks.length} of {stocks.length} stocks
             </span>
           </div>
         </CardHeader>

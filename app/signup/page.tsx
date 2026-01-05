@@ -1,8 +1,11 @@
+"use client"
+
 import { SignupForm } from "@/components/auth/signup-form"
 import Link from "next/link"
 import { TrendingUp } from "lucide-react"
 
-export const dynamic = "force-dynamic"
+// Note: Removed 'export const dynamic = "force-dynamic"' since this is now a Client Component
+// Client Components don't run during build time, solving the Netlify env var issue
 
 export default function SignupPage() {
   return (

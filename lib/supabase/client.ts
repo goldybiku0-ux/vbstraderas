@@ -3,8 +3,7 @@ import { createBrowserClient } from "@supabase/ssr"
 let supabaseClient: ReturnType<typeof createBrowserClient> | null = null
 
 export function getSupabaseBrowserClient() {
-  // During build time, env vars may not be available
-  // Return null early to prevent errors during SSR/build
+  // If env vars are missing in production, the app will show an error at runtime, not during build
   if (typeof window === "undefined") {
     return null as any
   }
@@ -17,7 +16,7 @@ export function getSupabaseBrowserClient() {
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   if (!supabaseUrl || !supabaseKey) {
-    console.error("Missing Supabase environment variables")
+    console.error("⚠️ Supabase environment variables are missing. Please add them to your Netlify environment.")
     return null as any
   }
 
