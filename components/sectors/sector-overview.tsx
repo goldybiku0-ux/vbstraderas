@@ -1,11 +1,12 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { MOCK_STOCKS } from "@/lib/mock-data"
-import { TrendingUp, TrendingDown, ArrowRight } from "lucide-react"
+import { TrendingUp, TrendingDown, ArrowRight, RefreshCw } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { useLiveMarketData } from "@/hooks/use-live-market-data"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface SectorStats {
   name: string
@@ -18,13 +19,12 @@ interface SectorStats {
 }
 
 export function SectorOverview() {
-  const [autoRefresh, setAutoRefresh] = useState(true)
+  const { stocks, loading, lastUpdate, refresh } = useLiveMarketData(1500)
 
-  // Calculate sector statistics
   const sectorStats = useMemo(() => {
     const sectors: { [key: string]: SectorStats } = {}
 
-    MOCK_STOCKS.forEach((stock) => {
+    stocks.forEach((stock) => {
       const sector = stock.sector
       if (!sectors[sector]) {
         sectors[sector] = {
@@ -70,18 +70,30 @@ export function SectorOverview() {
     })
 
     return Object.values(sectors).sort((a, b) => b.avgChange - a.avgChange)
-  }, [])
+  }, [stocks])
+
+  if (loading && stocks.length === 0) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-64" />
+        ))}
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
-      {/* Auto-refresh indicator */}
+      {/* Live update indicator */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className={`size-2 rounded-full ${autoRefresh ? "bg-green-500 animate-pulse" : "bg-gray-400"}`} />
-          <span className="text-sm text-muted-foreground">{autoRefresh ? "Live updates" : "Updates paused"}</span>
+          <div className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="text-sm text-muted-foreground">
+            {lastUpdate ? `Updated ${lastUpdate.toLocaleTimeString()}` : "Live updates"}
+          </span>
         </div>
-        <Button variant="outline" size="sm" onClick={() => setAutoRefresh(!autoRefresh)}>
-          {autoRefresh ? "Pause" : "Resume"} Updates
+        <Button variant="ghost" size="sm" onClick={refresh}>
+          <RefreshCw className="size-4" />
         </Button>
       </div>
 
@@ -102,7 +114,7 @@ export function SectorOverview() {
                 <div className="flex items-start justify-between">
                   <CardTitle className="text-lg font-bold">{sector.name}</CardTitle>
                   <div
-                    className={`flex items-center gap-1 text-sm font-semibold ${
+                    className={`flex items-center gap-1 text-sm font-semibold smooth-update ${
                       sector.avgChange > 0 ? "text-green-600" : "text-red-600"
                     }`}
                   >
@@ -137,13 +149,13 @@ export function SectorOverview() {
                   </div>
                   <div className="h-2 bg-muted rounded-full overflow-hidden flex">
                     <div
-                      className="bg-green-500"
+                      className="bg-green-500 transition-all duration-500"
                       style={{
                         width: `${(sector.gainers / sector.totalStocks) * 100}%`,
                       }}
                     />
                     <div
-                      className="bg-red-500"
+                      className="bg-red-500 transition-all duration-500"
                       style={{
                         width: `${(sector.losers / sector.totalStocks) * 100}%`,
                       }}
