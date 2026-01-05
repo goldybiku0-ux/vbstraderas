@@ -11,6 +11,10 @@ interface StockTableProps {
   showRFactor?: boolean
 }
 
+interface StockWithFlash extends Stock {
+  priceFlash?: "up" | "down" | null
+}
+
 export function StockTable({ stocks, showVolume, showRFactor }: StockTableProps) {
   return (
     <div className="rounded-md border overflow-x-auto">
@@ -27,50 +31,66 @@ export function StockTable({ stocks, showVolume, showRFactor }: StockTableProps)
           </TableRow>
         </TableHeader>
         <TableBody>
-          {stocks.map((stock) => (
-            <TableRow key={`${stock.symbol}-${stock.exchange}`}>
-              <TableCell>
-                <Link
-                  href={`/stock/${stock.exchange}:${stock.symbol}`}
-                  className="font-medium hover:text-primary transition-colors"
-                >
-                  {stock.symbol}
-                </Link>
-              </TableCell>
-              <TableCell className="max-w-48 truncate">{stock.name}</TableCell>
-              <TableCell className="text-right font-medium">₹{stock.price.toLocaleString("en-IN")}</TableCell>
-              <TableCell className="text-right">
-                <div className="flex items-center justify-end gap-1">
-                  {stock.changePercent >= 0 ? (
-                    <>
-                      <TrendingUp className="size-4 text-emerald-600" />
-                      <span className="text-emerald-600 font-medium">+{stock.changePercent.toFixed(2)}%</span>
-                    </>
-                  ) : (
-                    <>
-                      <TrendingDown className="size-4 text-red-600" />
-                      <span className="text-red-600 font-medium">{stock.changePercent.toFixed(2)}%</span>
-                    </>
-                  )}
-                </div>
-              </TableCell>
-              {showVolume && (
-                <TableCell className="text-right text-sm text-muted-foreground">{formatNumber(stock.volume)}</TableCell>
-              )}
-              {showRFactor && (
-                <TableCell className="text-right">
-                  {stock.rFactor && (
-                    <Badge variant={stock.rFactor >= 7.5 ? "default" : "secondary"} className="font-mono">
-                      {stock.rFactor.toFixed(1)}
-                    </Badge>
-                  )}
+          {stocks.map((stock) => {
+            const stockWithFlash = stock as StockWithFlash
+            return (
+              <TableRow
+                key={`${stock.symbol}-${stock.exchange}`}
+                className={
+                  stockWithFlash.priceFlash === "up"
+                    ? "price-flash-up"
+                    : stockWithFlash.priceFlash === "down"
+                      ? "price-flash-down"
+                      : ""
+                }
+              >
+                <TableCell>
+                  <Link
+                    href={`/stock/${stock.exchange}:${stock.symbol}`}
+                    className="font-medium hover:text-primary transition-colors"
+                  >
+                    {stock.symbol}
+                  </Link>
                 </TableCell>
-              )}
-              <TableCell className="text-right text-sm text-muted-foreground">
-                {formatCurrency(stock.marketCap)}
-              </TableCell>
-            </TableRow>
-          ))}
+                <TableCell className="max-w-48 truncate">{stock.name}</TableCell>
+                <TableCell className="text-right font-medium smooth-update">
+                  ₹{stock.price.toLocaleString("en-IN")}
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-1 smooth-update">
+                    {stock.changePercent >= 0 ? (
+                      <>
+                        <TrendingUp className="size-4 text-emerald-600" />
+                        <span className="text-emerald-600 font-medium">+{stock.changePercent.toFixed(2)}%</span>
+                      </>
+                    ) : (
+                      <>
+                        <TrendingDown className="size-4 text-red-600" />
+                        <span className="text-red-600 font-medium">{stock.changePercent.toFixed(2)}%</span>
+                      </>
+                    )}
+                  </div>
+                </TableCell>
+                {showVolume && (
+                  <TableCell className="text-right text-sm text-muted-foreground smooth-update">
+                    {formatNumber(stock.volume)}
+                  </TableCell>
+                )}
+                {showRFactor && (
+                  <TableCell className="text-right">
+                    {stock.rFactor && (
+                      <Badge variant={stock.rFactor >= 7.5 ? "default" : "secondary"} className="font-mono">
+                        {stock.rFactor.toFixed(1)}
+                      </Badge>
+                    )}
+                  </TableCell>
+                )}
+                <TableCell className="text-right text-sm text-muted-foreground">
+                  {formatCurrency(stock.marketCap)}
+                </TableCell>
+              </TableRow>
+            )
+          })}
         </TableBody>
       </Table>
     </div>

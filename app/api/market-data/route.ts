@@ -2,17 +2,17 @@ import { NextResponse } from "next/server"
 import { MOCK_STOCKS } from "@/lib/mock-data"
 import type { Stock } from "@/lib/types"
 
+let previousStocks: Stock[] = [...MOCK_STOCKS]
+
 export async function GET() {
   try {
-    // Simulate live price movements (±0.5% to ±2%)
-    const liveStocks: Stock[] = MOCK_STOCKS.map((stock) => {
-      const randomMovement = (Math.random() - 0.5) * 0.04 // -2% to +2%
+    const liveStocks: Stock[] = previousStocks.map((stock) => {
+      const randomMovement = (Math.random() - 0.5) * 0.01 // -0.5% to +0.5%
       const newPrice = stock.price * (1 + randomMovement)
-      const priceChange = newPrice - stock.price
-      const changePercent = (priceChange / stock.price) * 100
+      const priceChange = newPrice - MOCK_STOCKS.find((s) => s.symbol === stock.symbol)!.price
+      const changePercent = (priceChange / MOCK_STOCKS.find((s) => s.symbol === stock.symbol)!.price) * 100
 
-      // Simulate volume changes
-      const volumeChange = (Math.random() - 0.5) * 0.3 // ±15%
+      const volumeChange = (Math.random() - 0.5) * 0.05 // ±2.5%
       const newVolume = Math.floor(stock.volume * (1 + volumeChange))
 
       return {
@@ -20,9 +20,11 @@ export async function GET() {
         price: Number(newPrice.toFixed(2)),
         change: Number(priceChange.toFixed(2)),
         changePercent: Number(changePercent.toFixed(2)),
-        volume: newVolume,
+        volume: Math.max(newVolume, 0),
       }
     })
+
+    previousStocks = liveStocks
 
     return NextResponse.json({
       success: true,

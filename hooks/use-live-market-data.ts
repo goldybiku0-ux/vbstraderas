@@ -1,17 +1,30 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import type { Stock } from "@/lib/types"
 
-export function useLiveMarketData(refreshInterval = 5000) {
-  const [stocks, setStocks] = useState<Stock[]>([])
+interface StockWithFlash extends Stock {
+  priceFlash?: "up" | "down" | null
+  lastPrice?: number
+}
+
+export function useLiveMarketData(refreshInterval = 1500) {
+  const [stocks, setStocks] = useState<StockWithFlash[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
+  const animationFrameRef = useRef<number>()
+  const lastFetchTime = useRef<number>(0)
 
   const fetchMarketData = useCallback(async () => {
     try {
-      console.log("[v0] Fetching live market data...")
+      const now = Date.now()
+      // Throttle to prevent excessive API calls
+      if (now - lastFetchTime.current < refreshInterval) {
+        return
+      }
+      lastFetchTime.current = now
+
       const response = await fetch("/api/market-data")
 
       if (!response.ok) {
@@ -19,46 +32,90 @@ export function useLiveMarketData(refreshInterval = 5000) {
       }
 
       const data = await response.json()
-      setStocks(data.stocks || [])
+      const newStocks = data.stocks || []
+
+      setStocks((prevStocks) => {
+        return newStocks.map((newStock: Stock) => {
+          const prevStock = prevStocks.find((s) => s.symbol === newStock.symbol && s.exchange === newStock.exchange)
+
+          let priceFlash: "up" | "down" | null = null
+          if (prevStock && prevStock.price !== newStock.price) {
+            priceFlash = newStock.price > prevStock.price ? "up" : "down"
+          }
+
+          return {
+            ...newStock,
+            priceFlash,
+            lastPrice: prevStock?.price,
+          }
+        })
+      })
+
       setLastUpdate(new Date())
       setError(null)
-      console.log("[v0] Market data updated successfully", data.stocks?.length, "stocks")
     } catch (err) {
-      console.error("[v0] Error fetching market data:", err)
+      console.error("Error fetching market data:", err)
       setError(err instanceof Error ? err.message : "Failed to fetch market data")
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [refreshInterval])
 
   useEffect(() => {
-    // Initial fetch
+    const timer = setTimeout(() => {
+      setStocks((prev) => prev.map((s) => ({ ...s, priceFlash: null })))
+    }, 800)
+    return () => clearTimeout(timer)
+  }, [stocks])
+
+  useEffect(() => {
     fetchMarketData()
 
-    // Set up polling for live updates
-    const interval = setInterval(fetchMarketData, refreshInterval)
+    const startPolling = () => {
+      const poll = () => {
+        fetchMarketData()
+        animationFrameRef.current = requestAnimationFrame(() => {
+          setTimeout(poll, refreshInterval)
+        })
+      }
+      poll()
+    }
 
-    return () => clearInterval(interval)
+    startPolling()
+
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current)
+      }
+    }
   }, [fetchMarketData, refreshInterval])
 
   return { stocks, loading, error, lastUpdate, refresh: fetchMarketData }
 }
 
-export function useLiveIndices(refreshInterval = 3000) {
+export function useLiveIndices(refreshInterval = 1000) {
   const [indices, setIndices] = useState<
     Array<{
       name: string
       value: number
       change: number
       changePercent: number
+      flash?: "up" | "down" | null
     }>
   >([])
   const [loading, setLoading] = useState(true)
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
+  const animationFrameRef = useRef<number>()
+  const lastFetchTime = useRef<number>(0)
 
   const fetchIndices = useCallback(async () => {
     try {
-      console.log("[v0] Fetching live indices...")
+      const now = Date.now()
+      if (now - lastFetchTime.current < refreshInterval) {
+        return
+      }
+      lastFetchTime.current = now
+
       const response = await fetch("/api/indices")
 
       if (!response.ok) {
@@ -66,20 +123,54 @@ export function useLiveIndices(refreshInterval = 3000) {
       }
 
       const data = await response.json()
-      setIndices(data.indices || [])
+      const newIndices = data.indices || []
+
+      setIndices((prev) => {
+        return newIndices.map((newIndex: any) => {
+          const prevIndex = prev.find((i) => i.name === newIndex.name)
+          let flash: "up" | "down" | null = null
+          if (prevIndex && prevIndex.value !== newIndex.value) {
+            flash = newIndex.value > prevIndex.value ? "up" : "down"
+          }
+          return { ...newIndex, flash }
+        })
+      })
+
       setLastUpdate(new Date())
-      console.log("[v0] Indices updated successfully")
     } catch (err) {
-      console.error("[v0] Error fetching indices:", err)
+      console.error("Error fetching indices:", err)
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [refreshInterval])
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIndices((prev) => prev.map((i) => ({ ...i, flash: null })))
+    }, 600)
+    return () => clearTimeout(timer)
+  }, [indices])
 
   useEffect(() => {
     fetchIndices()
-    const interval = setInterval(fetchIndices, refreshInterval)
-    return () => clearInterval(interval)
+
+    const startPolling = () => {
+      const poll = () => {
+        fetchIndices()
+        animationFrameRef.current = requestAnimationFrame(() => {
+          setTimeout(poll, refreshInterval)
+        })
+      }
+      poll()
+    }
+
+    startPolling()
+
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current)
+      }
+    }
   }, [fetchIndices, refreshInterval])
 
   return { indices, loading, lastUpdate, refresh: fetchIndices }

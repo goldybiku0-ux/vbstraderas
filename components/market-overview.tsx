@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 
 export function MarketOverview() {
-  const { indices, loading, lastUpdate, refresh } = useLiveIndices(5000)
+  const { indices, loading, lastUpdate, refresh } = useLiveIndices(1000)
 
   if (loading && indices.length === 0) {
     return (
@@ -35,10 +35,15 @@ export function MarketOverview() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {indices.map((index) => (
-          <Card key={index.name} className="p-4">
+          <Card
+            key={index.name}
+            className={`p-4 ${
+              index.flash === "up" ? "price-flash-up" : index.flash === "down" ? "price-flash-down" : ""
+            }`}
+          >
             <div className="flex flex-col gap-1">
               <span className="text-sm text-muted-foreground font-medium">{index.name}</span>
-              <span className="text-xl md:text-2xl font-bold">
+              <span className="text-xl md:text-2xl font-bold smooth-update">
                 {index.value.toLocaleString("en-IN", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
@@ -48,14 +53,14 @@ export function MarketOverview() {
                 {index.changePercent >= 0 ? (
                   <>
                     <TrendingUp className="size-4 text-emerald-600" />
-                    <span className="text-emerald-600 font-medium">
+                    <span className="text-emerald-600 font-medium smooth-update">
                       +{index.change.toFixed(2)} ({index.changePercent.toFixed(2)}%)
                     </span>
                   </>
                 ) : (
                   <>
                     <TrendingDown className="size-4 text-red-600" />
-                    <span className="text-red-600 font-medium">
+                    <span className="text-red-600 font-medium smooth-update">
                       {index.change.toFixed(2)} ({index.changePercent.toFixed(2)}%)
                     </span>
                   </>

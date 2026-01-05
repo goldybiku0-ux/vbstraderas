@@ -7,22 +7,30 @@ const BASE_INDICES = [
   { name: "NIFTY IT", base: 34521.8 },
 ]
 
+let previousIndices = BASE_INDICES.map((index) => ({
+  name: index.name,
+  value: index.base,
+  change: 0,
+  changePercent: 0,
+}))
+
 export async function GET() {
   try {
-    // Simulate live index movements (±0.2% to ±1.5%)
-    const liveIndices = BASE_INDICES.map((index) => {
-      const randomMovement = (Math.random() - 0.5) * 0.03 // -1.5% to +1.5%
-      const newValue = index.base * (1 + randomMovement)
-      const change = newValue - index.base
-      const changePercent = (change / index.base) * 100
+    const liveIndices = previousIndices.map((prevIndex, i) => {
+      const randomMovement = (Math.random() - 0.5) * 0.004 // -0.2% to +0.2%
+      const newValue = prevIndex.value * (1 + randomMovement)
+      const change = newValue - BASE_INDICES[i].base
+      const changePercent = (change / BASE_INDICES[i].base) * 100
 
       return {
-        name: index.name,
+        name: prevIndex.name,
         value: Number(newValue.toFixed(2)),
         change: Number(change.toFixed(2)),
         changePercent: Number(changePercent.toFixed(2)),
       }
     })
+
+    previousIndices = liveIndices
 
     return NextResponse.json({
       success: true,

@@ -14,7 +14,7 @@ import { useLiveMarketData } from "@/hooks/use-live-market-data"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export function StockScreener() {
-  const { stocks, loading, lastUpdate, refresh } = useLiveMarketData(10000)
+  const { stocks, loading, lastUpdate, refresh } = useLiveMarketData(1500)
   const [searchQuery, setSearchQuery] = useState("")
   const [exchange, setExchange] = useState<string>("all")
   const [sector, setSector] = useState<string>("all")

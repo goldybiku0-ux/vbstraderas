@@ -10,7 +10,7 @@ import { RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export function TopMovers() {
-  const { stocks, loading, lastUpdate, refresh } = useLiveMarketData(5000)
+  const { stocks, loading, lastUpdate, refresh } = useLiveMarketData(1500)
 
   const topGainers = useMemo(() => [...stocks].sort((a, b) => b.changePercent - a.changePercent).slice(0, 5), [stocks])
 
