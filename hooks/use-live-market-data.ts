@@ -8,7 +8,7 @@ interface StockWithFlash extends Stock {
   lastPrice?: number
 }
 
-export function useLiveMarketData(refreshInterval = 10000) {
+export function useLiveMarketData(refreshInterval = 5000) {
   const [stocks, setStocks] = useState<StockWithFlash[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -72,7 +72,7 @@ export function useLiveMarketData(refreshInterval = 10000) {
   return { stocks, loading, error, lastUpdate, refresh: fetchMarketData }
 }
 
-export function useLiveIndices(refreshInterval = 10000) {
+export function useLiveIndices(refreshInterval = 5000) {
   const [indices, setIndices] = useState<
     Array<{
       name: string
@@ -131,7 +131,7 @@ export function useLiveIndices(refreshInterval = 10000) {
   return { indices, loading, lastUpdate, refresh: fetchIndices }
 }
 
-export function useLiveFutures(refreshInterval = 10000) {
+export function useLiveFutures(refreshInterval = 5000) {
   const [futures, setFutures] = useState<
     Array<{
       symbol: string
