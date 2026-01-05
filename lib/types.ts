@@ -54,3 +54,14 @@ export interface PriceAlert {
   triggeredAt?: string
   createdAt: string
 }
+
+export interface Future {
+  symbol: string
+  spotPrice: number
+  futurePrice: number
+  premium: number
+  premiumPercent: number
+  expiry: string
+  lotSize: number
+  openInterest?: number
+}

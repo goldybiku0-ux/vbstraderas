@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback } from "react"
 import type { Stock } from "@/lib/types"
 
 interface StockWithFlash extends Stock {
@@ -8,23 +8,14 @@ interface StockWithFlash extends Stock {
   lastPrice?: number
 }
 
-export function useLiveMarketData(refreshInterval = 1500) {
+export function useLiveMarketData(refreshInterval = 10000) {
   const [stocks, setStocks] = useState<StockWithFlash[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
-  const animationFrameRef = useRef<number>()
-  const lastFetchTime = useRef<number>(0)
 
   const fetchMarketData = useCallback(async () => {
     try {
-      const now = Date.now()
-      // Throttle to prevent excessive API calls
-      if (now - lastFetchTime.current < refreshInterval) {
-        return
-      }
-      lastFetchTime.current = now
-
       const response = await fetch("/api/market-data")
 
       if (!response.ok) {
@@ -59,41 +50,29 @@ export function useLiveMarketData(refreshInterval = 1500) {
     } finally {
       setLoading(false)
     }
-  }, [refreshInterval])
+  }, [])
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setStocks((prev) => prev.map((s) => ({ ...s, priceFlash: null })))
-    }, 800)
+    }, 600)
     return () => clearTimeout(timer)
   }, [stocks])
 
   useEffect(() => {
     fetchMarketData()
 
-    const startPolling = () => {
-      const poll = () => {
-        fetchMarketData()
-        animationFrameRef.current = requestAnimationFrame(() => {
-          setTimeout(poll, refreshInterval)
-        })
-      }
-      poll()
-    }
+    const interval = setInterval(() => {
+      fetchMarketData()
+    }, refreshInterval)
 
-    startPolling()
-
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current)
-      }
-    }
+    return () => clearInterval(interval)
   }, [fetchMarketData, refreshInterval])
 
   return { stocks, loading, error, lastUpdate, refresh: fetchMarketData }
 }
 
-export function useLiveIndices(refreshInterval = 1000) {
+export function useLiveIndices(refreshInterval = 10000) {
   const [indices, setIndices] = useState<
     Array<{
       name: string
@@ -105,17 +84,9 @@ export function useLiveIndices(refreshInterval = 1000) {
   >([])
   const [loading, setLoading] = useState(true)
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
-  const animationFrameRef = useRef<number>()
-  const lastFetchTime = useRef<number>(0)
 
   const fetchIndices = useCallback(async () => {
     try {
-      const now = Date.now()
-      if (now - lastFetchTime.current < refreshInterval) {
-        return
-      }
-      lastFetchTime.current = now
-
       const response = await fetch("/api/indices")
 
       if (!response.ok) {
@@ -142,7 +113,7 @@ export function useLiveIndices(refreshInterval = 1000) {
     } finally {
       setLoading(false)
     }
-  }, [refreshInterval])
+  }, [])
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -153,25 +124,71 @@ export function useLiveIndices(refreshInterval = 1000) {
 
   useEffect(() => {
     fetchIndices()
-
-    const startPolling = () => {
-      const poll = () => {
-        fetchIndices()
-        animationFrameRef.current = requestAnimationFrame(() => {
-          setTimeout(poll, refreshInterval)
-        })
-      }
-      poll()
-    }
-
-    startPolling()
-
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current)
-      }
-    }
+    const interval = setInterval(fetchIndices, refreshInterval)
+    return () => clearInterval(interval)
   }, [fetchIndices, refreshInterval])
 
   return { indices, loading, lastUpdate, refresh: fetchIndices }
+}
+
+export function useLiveFutures(refreshInterval = 10000) {
+  const [futures, setFutures] = useState<
+    Array<{
+      symbol: string
+      spotPrice: number
+      futurePrice: number
+      premium: number
+      premiumPercent: number
+      expiry: string
+      lotSize: number
+      flash?: "up" | "down" | null
+    }>
+  >([])
+  const [loading, setLoading] = useState(true)
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
+
+  const fetchFutures = useCallback(async () => {
+    try {
+      const response = await fetch("/api/futures")
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch futures: ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      const newFutures = data.futures || []
+
+      setFutures((prev) => {
+        return newFutures.map((newFuture: any) => {
+          const prevFuture = prev.find((f) => f.symbol === newFuture.symbol)
+          let flash: "up" | "down" | null = null
+          if (prevFuture && prevFuture.futurePrice !== newFuture.futurePrice) {
+            flash = newFuture.futurePrice > prevFuture.futurePrice ? "up" : "down"
+          }
+          return { ...newFuture, flash }
+        })
+      })
+
+      setLastUpdate(new Date())
+    } catch (err) {
+      console.error("Error fetching futures:", err)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setFutures((prev) => prev.map((f) => ({ ...f, flash: null })))
+    }, 600)
+    return () => clearTimeout(timer)
+  }, [futures])
+
+  useEffect(() => {
+    fetchFutures()
+    const interval = setInterval(fetchFutures, refreshInterval)
+    return () => clearInterval(interval)
+  }, [fetchFutures, refreshInterval])
+
+  return { futures, loading, lastUpdate, refresh: fetchFutures }
 }
